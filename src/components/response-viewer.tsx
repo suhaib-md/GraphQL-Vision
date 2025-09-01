@@ -76,12 +76,12 @@ export function ResponseViewer({ response, rawSchema, query, isLoading }: Respon
             <TabsTrigger value="ai"><Bot className="w-4 h-4 mr-1 inline-block" /> AI</TabsTrigger>
           </TabsList>
         </div>
-        <TabsContent value="response" className="flex-1 m-0">
+        <TabsContent value="response" className="flex-1 m-0 overflow-y-auto">
           <ScrollArea className="h-full">
             {renderContent()}
           </ScrollArea>
         </TabsContent>
-        <TabsContent value="table" className="flex-1 m-0">
+        <TabsContent value="table" className="flex-1 m-0 overflow-y-auto">
             <ScrollArea className="h-full">
                 <Table>
                     <TableHeader>
@@ -110,7 +110,7 @@ export function ResponseViewer({ response, rawSchema, query, isLoading }: Respon
             <p>Chart view will be available here.</p>
           </div>
         </TabsContent>
-        <TabsContent value="ai" className="flex-1 m-0">
+        <TabsContent value="ai" className="flex-1 m-0 overflow-y-auto">
           <AiSuggestions response={response} rawSchema={rawSchema} query={query} />
         </TabsContent>
       </Tabs>

@@ -292,28 +292,28 @@ function ManageEnvironmentsSheet({ children, environments, setEnvironments }: { 
     return (
         <Sheet>
             <SheetTrigger asChild>{children}</SheetTrigger>
-            <SheetContent className="w-[400px] sm:w-[540px]">
+            <SheetContent className="w-[400px] sm:w-[540px] flex flex-col">
                 <SheetHeader>
                     <SheetTitle>Manage Environments</SheetTitle>
                 </SheetHeader>
-                <div className="py-4 space-y-8">
+                <div className="py-4 space-y-6 flex-1 overflow-y-auto">
                     <div className="space-y-4">
                         <h3 className="font-semibold text-lg">Current Environments</h3>
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                             {environments.map(env => (
-                                <div key={env.id} className="flex items-center justify-between rounded-lg border p-3">
-                                    <div className="flex items-center gap-3">
-                                        <div className={cn("h-3 w-3 rounded-full", env.color)} />
-                                        <div>
-                                            <p className="font-medium">{env.name}</p>
-                                            <p className="text-xs text-muted-foreground">{env.url}</p>
+                                <div key={env.id} className="flex items-center justify-between rounded-lg border p-3 gap-2">
+                                    <div className="flex items-center gap-3 overflow-hidden">
+                                        <div className={cn("h-3 w-3 rounded-full shrink-0", env.color)} />
+                                        <div className="truncate">
+                                            <p className="font-medium truncate">{env.name}</p>
+                                            <p className="text-xs text-muted-foreground truncate">{env.url}</p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex items-center gap-2 shrink-0">
                                       <Button variant="outline" size="sm" onClick={() => handleCheckConnection(env)} disabled={checkingId === env.id}>
-                                        {checkingId === env.id ? 'Checking...' : 'Test Connection'}
+                                        {checkingId === env.id ? 'Checking...' : 'Test'}
                                       </Button>
-                                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteEnvironment(env.id)}>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteEnvironment(env.id)}>
                                           <Trash2 className="h-4 w-4" />
                                       </Button>
                                     </div>
@@ -321,22 +321,22 @@ function ManageEnvironmentsSheet({ children, environments, setEnvironments }: { 
                             ))}
                         </div>
                     </div>
-                    <div className="space-y-4">
+                    <div className="space-y-4 pt-4 border-t">
                         <h3 className="font-semibold text-lg">Add New Environment</h3>
-                        <div className="space-y-3">
-                            <div>
+                        <div className="space-y-4">
+                            <div className="space-y-2">
                                 <Label htmlFor="env-name">Name</Label>
                                 <Input id="env-name" placeholder="e.g., Local Dev" value={name} onChange={e => setName(e.target.value)} />
                             </div>
-                            <div>
+                            <div className="space-y-2">
                                 <Label htmlFor="env-url">Endpoint URL</Label>
                                 <Input id="env-url" placeholder="https://api.myapp.com/graphql" value={url} onChange={e => setUrl(e.target.value)} />
                             </div>
-                            <div>
+                            <div className="space-y-2">
                                 <Label htmlFor="env-token">Bearer Token (Optional)</Label>
                                 <Input id="env-token" placeholder="your-secret-token" value={token} onChange={e => setToken(e.target.value)} />
                             </div>
-                            <Button onClick={handleAddEnvironment}>Add Environment</Button>
+                            <Button onClick={handleAddEnvironment}><PlusCircle className="mr-2 h-4 w-4" /> Add Environment</Button>
                         </div>
                     </div>
                 </div>
