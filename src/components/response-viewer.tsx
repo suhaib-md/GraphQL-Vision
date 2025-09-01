@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from 'react'
@@ -49,12 +48,18 @@ export function ResponseViewer({ response, rawSchema, query, isLoading }: Respon
     }
     if (!response) {
       return (
-        <div className="text-center text-muted-foreground text-sm flex-1 flex items-center justify-center h-full">
+        <div className="text-center text-muted-foreground text-sm flex items-center justify-center h-full">
             <p>Click "Run" to see the response here.</p>
         </div>
       )
     }
-    return <pre className="p-4 text-xs font-code h-full"><code className="font-code">{response}</code></pre>;
+    return (
+      <div className="h-full overflow-auto p-4">
+        <pre className="text-xs font-code whitespace-pre-wrap break-words">
+          <code className="font-code">{response}</code>
+        </pre>
+      </div>
+    );
   }
 
   return (
@@ -67,53 +72,55 @@ export function ResponseViewer({ response, rawSchema, query, isLoading }: Respon
             <Badge variant="outline">Size: <span className="font-semibold ml-1">1.2KB</span></Badge>
         </div>
       </div>
-      <Tabs defaultValue="response" className="flex-1 flex flex-col min-h-0">
-        <div className="p-2 border-b">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="response"><Code className="w-4 h-4 mr-1 inline-block" /> Response</TabsTrigger>
-            <TabsTrigger value="table" disabled={!Array.isArray(users)}><TableIcon className="w-4 h-4 mr-1 inline-block" /> Table</TabsTrigger>
-            <TabsTrigger value="chart" disabled={true}><BarChart className="w-4 h-4 mr-1 inline-block" /> Chart</TabsTrigger>
-            <TabsTrigger value="ai"><Bot className="w-4 h-4 mr-1 inline-block" /> AI</TabsTrigger>
-          </TabsList>
-        </div>
-        <TabsContent value="response" className="flex-1 m-0 overflow-y-auto">
-          <ScrollArea className="h-full">
-            {renderContent()}
-          </ScrollArea>
-        </TabsContent>
-        <TabsContent value="table" className="flex-1 m-0 overflow-y-auto">
-            <ScrollArea className="h-full">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>ID</TableHead>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Email</TableHead>
-                            <TableHead>Posts</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {Array.isArray(users) && users.map((user: any) => (
-                            <TableRow key={user.id}>
-                                <TableCell>{user.id}</TableCell>
-                                <TableCell>{user.name}</TableCell>
-                                <TableCell>{user.email}</TableCell>
-                                <TableCell>{user.posts.length}</TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </ScrollArea>
-        </TabsContent>
-         <TabsContent value="chart" className="flex-1 flex flex-col m-0 p-4">
-          <div className="text-center text-muted-foreground text-sm flex-1 flex items-center justify-center">
-            <p>Chart view will be available here.</p>
+      <div className="flex-1 flex flex-col min-h-0">
+        <Tabs defaultValue="response" className="flex-1 flex flex-col">
+          <div className="p-2 border-b shrink-0">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="response"><Code className="w-4 h-4 mr-1 inline-block" /> Response</TabsTrigger>
+              <TabsTrigger value="table" disabled={!Array.isArray(users)}><TableIcon className="w-4 h-4 mr-1 inline-block" /> Table</TabsTrigger>
+              <TabsTrigger value="chart" disabled={true}><BarChart className="w-4 h-4 mr-1 inline-block" /> Chart</TabsTrigger>
+              <TabsTrigger value="ai"><Bot className="w-4 h-4 mr-1 inline-block" /> AI</TabsTrigger>
+            </TabsList>
           </div>
-        </TabsContent>
-        <TabsContent value="ai" className="flex-1 m-0 overflow-y-auto">
-          <AiSuggestions response={response} rawSchema={rawSchema} query={query} />
-        </TabsContent>
-      </Tabs>
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <TabsContent value="response" className="h-full m-0">
+              {renderContent()}
+            </TabsContent>
+            <TabsContent value="table" className="h-full m-0">
+                <div className="h-full overflow-auto">
+                  <Table>
+                      <TableHeader>
+                          <TableRow>
+                              <TableHead>ID</TableHead>
+                              <TableHead>Name</TableHead>
+                              <TableHead>Email</TableHead>
+                              <TableHead>Posts</TableHead>
+                          </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                          {Array.isArray(users) && users.map((user: any) => (
+                              <TableRow key={user.id}>
+                                  <TableCell>{user.id}</TableCell>
+                                  <TableCell>{user.name}</TableCell>
+                                  <TableCell>{user.email}</TableCell>
+                                  <TableCell>{user.posts.length}</TableCell>
+                              </TableRow>
+                          ))}
+                      </TableBody>
+                  </Table>
+                </div>
+            </TabsContent>
+             <TabsContent value="chart" className="h-full m-0 flex items-center justify-center">
+              <div className="text-center text-muted-foreground text-sm">
+                <p>Chart view will be available here.</p>
+              </div>
+            </TabsContent>
+            <TabsContent value="ai" className="h-full m-0">
+              <AiSuggestions response={response} rawSchema={rawSchema} query={query} />
+            </TabsContent>
+          </div>
+        </Tabs>
+      </div>
     </div>
   )
 }
@@ -148,46 +155,44 @@ function AiSuggestions({ response, rawSchema, query }: Omit<ResponseViewerProps,
   };
 
   return (
-    <ScrollArea className="h-full">
-      <div className="p-4 space-y-4">
+    <div className="h-full overflow-auto p-4 space-y-4">
+      <Card>
+        <CardContent className="pt-6">
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Describe the expected response (optional)</p>
+            <Textarea 
+              placeholder="e.g., 'The response should be an array of users, each with a name and at least one post.'"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="h-24"
+              disabled={!response}
+            />
+            <Button onClick={handleGenerateSuggestions} disabled={isLoading || !response}>
+              {isLoading ? "Generating..." : "Suggest Validations"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+      {isLoading && (
         <Card>
+          <CardContent className="pt-6 space-y-4">
+            <Skeleton className="h-4 w-1/4" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+          </CardContent>
+        </Card>
+      )}
+      {suggestions && (
+         <Card>
           <CardContent className="pt-6">
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Describe the expected response (optional)</p>
-              <Textarea 
-                placeholder="e.g., 'The response should be an array of users, each with a name and at least one post.'"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="h-24"
-                disabled={!response}
-              />
-              <Button onClick={handleGenerateSuggestions} disabled={isLoading || !response}>
-                {isLoading ? "Generating..." : "Suggest Validations"}
-              </Button>
+            <h3 className="font-semibold mb-2">Suggested Validations</h3>
+            <div className="text-sm text-muted-foreground whitespace-pre-wrap font-sans">
+              {suggestions}
             </div>
           </CardContent>
         </Card>
-        {isLoading && (
-          <Card>
-            <CardContent className="pt-6 space-y-4">
-              <Skeleton className="h-4 w-1/4" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-3/4" />
-            </CardContent>
-          </Card>
-        )}
-        {suggestions && (
-           <Card>
-            <CardContent className="pt-6">
-              <h3 className="font-semibold mb-2">Suggested Validations</h3>
-              <div className="text-sm text-muted-foreground whitespace-pre-wrap font-sans">
-                {suggestions}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    </ScrollArea>
+      )}
+    </div>
   );
 }
