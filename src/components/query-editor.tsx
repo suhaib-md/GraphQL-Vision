@@ -221,7 +221,10 @@ function KeyValueEditor({ jsonString, onJsonStringChange, keyPlaceholder, valueP
     }
   }
 
-  const handleSelectCommonHeader = (header: { name: string; value: string }) => {
+  const handleSelectCommonHeader = (headerName: string) => {
+    const header = COMMON_HEADERS.find(h => h.name === headerName);
+    if (!header) return;
+
     const lastPair = kvPairs[kvPairs.length - 1];
     let newPairs;
 
@@ -287,7 +290,7 @@ function KeyValueEditor({ jsonString, onJsonStringChange, keyPlaceholder, valueP
 }
 
 
-function CommonHeadersPopover({ onSelect }: { onSelect: (header: { name: string; value: string }) => void }) {
+function CommonHeadersPopover({ onSelect }: { onSelect: (headerName: string) => void }) {
   const [open, setOpen] = React.useState(false);
 
   return (
@@ -307,8 +310,9 @@ function CommonHeadersPopover({ onSelect }: { onSelect: (header: { name: string;
               {COMMON_HEADERS.map((header) => (
                 <CommandItem
                   key={header.name}
-                  onSelect={() => {
-                    onSelect(header);
+                  value={header.name}
+                  onSelect={(currentValue) => {
+                    onSelect(currentValue);
                     setOpen(false);
                   }}
                   className="cursor-pointer"
@@ -323,5 +327,3 @@ function CommonHeadersPopover({ onSelect }: { onSelect: (header: { name: string;
     </Popover>
   );
 }
-
-    
