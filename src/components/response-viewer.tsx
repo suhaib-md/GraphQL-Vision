@@ -11,6 +11,7 @@ import { suggestGraphQLResponseValidations } from '@/ai/flows/suggest-graphql-re
 import { Card, CardContent } from './ui/card'
 import { Skeleton } from './ui/skeleton'
 import { useToast } from '@/hooks/use-toast'
+import { ScrollArea } from './ui/scroll-area'
 
 interface ResponseViewerProps {
   response: string;
@@ -30,8 +31,24 @@ export function ResponseViewer({ response, rawSchema, query, isLoading }: Respon
       return null;
     }
   }, [response]);
-  
-  const users = parsedResponse?.data?.users;
+
+  const tableData = React.useMemo(() => {
+    if (!parsedResponse?.data) {
+      return null;
+    }
+    // Find the first key in the data object that holds an array
+    const arrayKey = Object.keys(parsedResponse.data).find(key => Array.isArray(parsedResponse.data[key]));
+    if (!arrayKey) {
+      return null;
+    }
+    const data = parsedResponse.data[arrayKey];
+    if (data.length === 0) {
+      return { headers: [], rows: [] };
+    }
+    // Get headers from the keys of the first object
+    const headers = Object.keys(data[0]);
+    return { headers, rows: data };
+  }, [parsedResponse]);
 
   const renderContent = () => {
     if (isLoading) {
@@ -52,13 +69,23 @@ export function ResponseViewer({ response, rawSchema, query, isLoading }: Respon
       )
     }
     return (
-      <div className="p-4 overflow-y-auto max-h-full">
-        <pre className="text-xs font-code whitespace-pre-wrap break-words">
+      <ScrollArea className="h-full">
+        <pre className="text-xs font-code whitespace-pre-wrap break-words p-4 h-full">
           <code className="font-code">{response}</code>
         </pre>
-      </div>
+      </ScrollArea>
     );
   }
+
+  const renderTableCell = (item: any) => {
+    if (typeof item === 'object' && item !== null) {
+      if (Array.isArray(item)) {
+        return `[${item.length} items]`;
+      }
+      return JSON.stringify(item, null, 2);
+    }
+    return String(item);
+  };
 
   return (
     <div className="flex flex-col h-full bg-card">
@@ -75,50 +102,52 @@ export function ResponseViewer({ response, rawSchema, query, isLoading }: Respon
           <div className="p-2 border-b shrink-0">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="response"><Code className="w-4 h-4 mr-1 inline-block" /> Response</TabsTrigger>
-              <TabsTrigger value="table" disabled={!Array.isArray(users)}><TableIcon className="w-4 h-4 mr-1 inline-block" /> Table</TabsTrigger>
+              <TabsTrigger value="table" disabled={!tableData}><TableIcon className="w-4 h-4 mr-1 inline-block" /> Table</TabsTrigger>
               <TabsTrigger value="chart" disabled={true}><BarChart className="w-4 h-4 mr-1 inline-block" /> Chart</TabsTrigger>
               <TabsTrigger value="ai"><Bot className="w-4 h-4 mr-1 inline-block" /> AI</TabsTrigger>
             </TabsList>
           </div>
-          <div className="flex-1 min-h-0">
-            <TabsContent value="response" className="h-full m-0 overflow-hidden">
-              <div className="h-full overflow-y-auto">
-                {renderContent()}
-              </div>
+          <div className="flex-1 overflow-y-auto">
+            <TabsContent value="response" className="h-full m-0">
+              {renderContent()}
             </TabsContent>
-            <TabsContent value="table" className="h-full m-0 overflow-hidden">
-              <div className="h-full overflow-y-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Posts</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {Array.isArray(users) && users.map((user: any) => (
-                      <TableRow key={user.id}>
-                        <TableCell>{user.id}</TableCell>
-                        <TableCell>{user.name}</TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>{user.posts.length}</TableCell>
+            <TabsContent value="table" className="h-full m-0">
+              <ScrollArea className="h-full">
+                {tableData ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        {tableData.headers.map(header => <TableHead key={header}>{header}</TableHead>)}
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {tableData.rows.map((row: any, rowIndex: number) => (
+                        <TableRow key={row.id || rowIndex}>
+                          {tableData.headers.map(header => (
+                            <TableCell key={`${header}-${rowIndex}`}>
+                              {renderTableCell(row[header])}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center text-muted-foreground text-sm flex items-center justify-center h-full">
+                    <p>No array data found in the response to display in table format.</p>
+                  </div>
+                )}
+              </ScrollArea>
             </TabsContent>
             <TabsContent value="chart" className="h-full m-0 flex items-center justify-center">
               <div className="text-center text-muted-foreground text-sm">
                 <p>Chart view will be available here.</p>
               </div>
             </TabsContent>
-            <TabsContent value="ai" className="h-full m-0 overflow-hidden">
-              <div className="h-full overflow-y-auto">
+            <TabsContent value="ai" className="h-full m-0">
+              <ScrollArea className="h-full">
                 <AiSuggestions response={response} rawSchema={rawSchema} query={query} />
-              </div>
+              </ScrollArea>
             </TabsContent>
           </div>
         </Tabs>
