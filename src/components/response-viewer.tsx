@@ -3,7 +3,6 @@
 import * as React from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from '@/components/ui/textarea'
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { BarChart, Bot, Code, Table as TableIcon } from 'lucide-react'
@@ -25,7 +24,6 @@ export function ResponseViewer({ response, rawSchema, query, isLoading }: Respon
     try {
       return JSON.parse(response)
     } catch {
-      // If response is not a valid JSON, it might be an error string or empty.
       if (response) {
          return { error: "Invalid JSON response" }
       }
@@ -54,7 +52,7 @@ export function ResponseViewer({ response, rawSchema, query, isLoading }: Respon
       )
     }
     return (
-      <div className="h-full overflow-auto p-4">
+      <div className="p-4 overflow-y-auto max-h-full">
         <pre className="text-xs font-code whitespace-pre-wrap break-words">
           <code className="font-code">{response}</code>
         </pre>
@@ -72,8 +70,8 @@ export function ResponseViewer({ response, rawSchema, query, isLoading }: Respon
             <Badge variant="outline">Size: <span className="font-semibold ml-1">1.2KB</span></Badge>
         </div>
       </div>
-      <div className="flex-1 flex flex-col min-h-0">
-        <Tabs defaultValue="response" className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <Tabs defaultValue="response" className="flex-1 flex flex-col min-h-0">
           <div className="p-2 border-b shrink-0">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="response"><Code className="w-4 h-4 mr-1 inline-block" /> Response</TabsTrigger>
@@ -82,41 +80,45 @@ export function ResponseViewer({ response, rawSchema, query, isLoading }: Respon
               <TabsTrigger value="ai"><Bot className="w-4 h-4 mr-1 inline-block" /> AI</TabsTrigger>
             </TabsList>
           </div>
-          <div className="flex-1 min-h-0 overflow-hidden">
-            <TabsContent value="response" className="h-full m-0">
-              {renderContent()}
+          <div className="flex-1 min-h-0">
+            <TabsContent value="response" className="h-full m-0 overflow-hidden">
+              <div className="h-full overflow-y-auto">
+                {renderContent()}
+              </div>
             </TabsContent>
-            <TabsContent value="table" className="h-full m-0">
-                <div className="h-full overflow-auto">
-                  <Table>
-                      <TableHeader>
-                          <TableRow>
-                              <TableHead>ID</TableHead>
-                              <TableHead>Name</TableHead>
-                              <TableHead>Email</TableHead>
-                              <TableHead>Posts</TableHead>
-                          </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                          {Array.isArray(users) && users.map((user: any) => (
-                              <TableRow key={user.id}>
-                                  <TableCell>{user.id}</TableCell>
-                                  <TableCell>{user.name}</TableCell>
-                                  <TableCell>{user.email}</TableCell>
-                                  <TableCell>{user.posts.length}</TableCell>
-                              </TableRow>
-                          ))}
-                      </TableBody>
-                  </Table>
-                </div>
+            <TabsContent value="table" className="h-full m-0 overflow-hidden">
+              <div className="h-full overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>ID</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Posts</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {Array.isArray(users) && users.map((user: any) => (
+                      <TableRow key={user.id}>
+                        <TableCell>{user.id}</TableCell>
+                        <TableCell>{user.name}</TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>{user.posts.length}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </TabsContent>
-             <TabsContent value="chart" className="h-full m-0 flex items-center justify-center">
+            <TabsContent value="chart" className="h-full m-0 flex items-center justify-center">
               <div className="text-center text-muted-foreground text-sm">
                 <p>Chart view will be available here.</p>
               </div>
             </TabsContent>
-            <TabsContent value="ai" className="h-full m-0">
-              <AiSuggestions response={response} rawSchema={rawSchema} query={query} />
+            <TabsContent value="ai" className="h-full m-0 overflow-hidden">
+              <div className="h-full overflow-y-auto">
+                <AiSuggestions response={response} rawSchema={rawSchema} query={query} />
+              </div>
             </TabsContent>
           </div>
         </Tabs>
@@ -155,7 +157,7 @@ function AiSuggestions({ response, rawSchema, query }: Omit<ResponseViewerProps,
   };
 
   return (
-    <div className="h-full overflow-auto p-4 space-y-4">
+    <div className="p-4 space-y-4">
       <Card>
         <CardContent className="pt-6">
           <div className="space-y-2">
