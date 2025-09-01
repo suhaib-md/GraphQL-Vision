@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Play, Sparkles, Loader } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { parse, print } from 'graphql';
+import { useToast } from '@/hooks/use-toast';
 
 interface QueryEditorProps {
   value: string;
@@ -19,12 +21,28 @@ interface QueryEditorProps {
 }
 
 export function QueryEditor({ value, onValueChange, onRunQuery, isLoading, variables, onVariablesChange, headers, onHeadersChange }: QueryEditorProps) {
+  const { toast } = useToast();
+
+  const handlePrettify = () => {
+    try {
+      const ast = parse(value);
+      const prettyQuery = print(ast);
+      onValueChange(prettyQuery);
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Invalid Query',
+        description: 'The query could not be formatted. Please check for syntax errors.',
+      });
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-card">
       <div className="p-2 border-b flex items-center justify-between gap-2 h-14 shrink-0">
         <h2 className="text-sm font-semibold px-2">Query</h2>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handlePrettify}>
             <Sparkles className="h-4 w-4 mr-2" />
             Prettify
           </Button>
