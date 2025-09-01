@@ -4,14 +4,17 @@
 import * as React from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Play, Sparkles, Loader, Trash2, Plus, Code, List, ChevronDown, Search } from 'lucide-react'
+import { Play, Sparkles, Loader, Trash2, Plus, Code, List, ChevronDown, Search, Bot } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { parse, print } from 'graphql';
-import { useToast } from '@/hooks/use-toast';
+import { parse, print } from 'graphql'
+import { useToast } from '@/hooks/use-toast'
 import { Input } from './ui/input'
 import { cn } from '@/lib/utils'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command'
+import { Command, CommandGroup, CommandItem, CommandList } from './ui/command'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog'
+import { generateGraphQLQuery } from '@/ai/flows/generate-graphql-query-from-description'
+import { Label } from './ui/label'
 
 interface QueryEditorProps {
   value: string;
@@ -22,9 +25,10 @@ interface QueryEditorProps {
   onVariablesChange: (value: string) => void;
   headers: string;
   onHeadersChange: (value: string) => void;
+  schema: string;
 }
 
-export function QueryEditor({ value, onValueChange, onRunQuery, isLoading, variables, onVariablesChange, headers, onHeadersChange }: QueryEditorProps) {
+export function QueryEditor({ value, onValueChange, onRunQuery, isLoading, variables, onVariablesChange, headers, onHeadersChange, schema }: QueryEditorProps) {
   const { toast } = useToast();
 
   const handlePrettify = () => {
@@ -47,6 +51,7 @@ export function QueryEditor({ value, onValueChange, onRunQuery, isLoading, varia
       <div className="p-2 border-b flex items-center justify-between gap-2 h-14 shrink-0">
         <h2 className="text-sm font-semibold px-2">Query</h2>
         <div className="flex items-center gap-2">
+          <GenerateQueryDialog schema={schema} onQueryGenerated={onValueChange} />
           <Button variant="outline" size="sm" onClick={handlePrettify} disabled={!value}>
             <Sparkles className="h-4 w-4 mr-2" />
             Prettify
@@ -97,6 +102,75 @@ export function QueryEditor({ value, onValueChange, onRunQuery, isLoading, varia
       </div>
     </div>
   )
+}
+
+function GenerateQueryDialog({ schema, onQueryGenerated }: { schema: string, onQueryGenerated: (query: string) => void }) {
+  const [open, setOpen] = React.useState(false);
+  const [description, setDescription] = React.useState('');
+  const [isGenerating, setIsGenerating] = React.useState(false);
+  const { toast } = useToast();
+
+  const handleGenerate = async () => {
+    if (!description) {
+      toast({ variant: 'destructive', title: 'Description is empty' });
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      const result = await generateGraphQLQuery({ description, schema });
+      onQueryGenerated(result.query);
+      toast({ title: 'Query Generated', description: 'The AI-generated query has been added to the editor.' });
+      setOpen(false);
+      setDescription('');
+    } catch (error) {
+      console.error("AI query generation failed:", error);
+      toast({
+        variant: "destructive",
+        title: "AI Generation Failed",
+        description: "Could not generate the query. Please try again.",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+  
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <Bot className="h-4 w-4 mr-2" />
+          Generate with AI
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[525px]">
+        <DialogHeader>
+          <DialogTitle>Generate Query with AI</DialogTitle>
+          <DialogDescription>
+            Describe the data you want to query in plain English. The AI will generate the GraphQL query for you.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="description" className="text-right">
+              Description
+            </Label>
+            <Textarea 
+              id="description" 
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="col-span-3 h-24"
+              placeholder="e.g., 'Get the names and emails of all active users and the titles of their last 5 posts.'"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button onClick={handleGenerate} disabled={isGenerating}>
+            {isGenerating ? <><Loader className="mr-2 h-4 w-4 animate-spin"/> Generating...</> : "Generate Query"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 
@@ -156,20 +230,29 @@ function KeyValueEditor({ jsonString, onJsonStringChange, keyPlaceholder, valueP
       const obj = pairs.reduce((acc, { key, value }) => {
         if (key) {
           try {
+            // Try to parse value as JSON if it looks like an object or array
             if ((value.startsWith('{') && value.endsWith('}')) || (value.startsWith('[') && value.endsWith(']'))) {
               acc[key] = JSON.parse(value);
             } else {
-              acc[key] = value;
+               // Handle numbers, booleans, and strings
+              if (!isNaN(Number(value)) && !Array.isArray(value) && value.trim() !== '') {
+                  acc[key] = Number(value);
+              } else if (value === 'true' || value === 'false') {
+                  acc[key] = value === 'true';
+              }
+              else {
+                  acc[key] = value;
+              }
             }
           } catch {
-            acc[key] = value;
+            acc[key] = value; // Fallback to string if JSON parsing fails
           }
         }
         return acc;
       }, {} as Record<string, any>);
       onJsonStringChange(JSON.stringify(obj, null, 2));
     } catch (e) {
-      // Should not happen
+      // Should not happen with the safeguards
     }
   };
   
@@ -220,7 +303,7 @@ function KeyValueEditor({ jsonString, onJsonStringChange, keyPlaceholder, valueP
       }
     }
   }
-
+  
   const handleSelectCommonHeader = (headerName: string) => {
     const header = COMMON_HEADERS.find(h => h.name === headerName);
     if (!header) return;
@@ -229,12 +312,10 @@ function KeyValueEditor({ jsonString, onJsonStringChange, keyPlaceholder, valueP
     let newPairs;
 
     if (lastPair && !lastPair.key && !lastPair.value) {
-      // If the last pair is empty, update it
       newPairs = kvPairs.map(p => 
         p.id === lastPair.id ? { ...p, key: header.name, value: header.value } : p
       );
     } else {
-      // Otherwise, add a new pair
       newPairs = [...kvPairs, { id: `id-${Date.now()}`, key: header.name, value: header.value }];
     }
     
@@ -292,18 +373,10 @@ function KeyValueEditor({ jsonString, onJsonStringChange, keyPlaceholder, valueP
 
 function CommonHeadersPopover({ onSelect }: { onSelect: (headerName: string) => void }) {
   const [open, setOpen] = React.useState(false);
-  const [search, setSearch] = React.useState('');
-
-  const filteredHeaders = React.useMemo(() => {
-    return COMMON_HEADERS.filter(header =>
-      header.name.toLowerCase().includes(search.toLowerCase())
-    );
-  }, [search]);
-
-  const handleSelect = (headerName: string) => {
-    onSelect(headerName);
+  
+  const handleSelect = (commandValue: string) => {
+    onSelect(commandValue);
     setOpen(false);
-    setSearch('');
   };
 
   return (
@@ -315,36 +388,31 @@ function CommonHeadersPopover({ onSelect }: { onSelect: (headerName: string) => 
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[300px] p-0">
-        <div className="p-2 border-b">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search headers..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-8"
-            />
-          </div>
-        </div>
-        <div className="max-h-[200px] overflow-y-auto">
-          {filteredHeaders.length === 0 ? (
-            <div className="p-4 text-sm text-muted-foreground text-center">
-              No headers found.
+        <Command>
+            <div className="p-2 border-b">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search headers..."
+                  className="pl-9 h-8"
+                />
+              </div>
             </div>
-          ) : (
-            <div className="p-1">
-              {filteredHeaders.map((header) => (
-                <div
-                  key={header.name}
-                  className="flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
-                  onClick={() => handleSelect(header.name)}
-                >
-                  {header.name}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+            <CommandList>
+              <CommandGroup>
+                {COMMON_HEADERS.map((header) => (
+                  <CommandItem
+                    key={header.name}
+                    value={header.name}
+                    onSelect={handleSelect}
+                    className="cursor-pointer"
+                  >
+                    {header.name}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+        </Command>
       </PopoverContent>
     </Popover>
   );

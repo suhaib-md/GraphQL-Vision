@@ -113,6 +113,7 @@ export default function Home() {
             onVariablesChange={setVariables}
             headers={headers}
             onHeadersChange={setHeaders}
+            schema={JSON.stringify(schema, null, 2)}
           />
         </ResizablePanel>
         <ResizableHandle withHandle />
