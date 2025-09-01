@@ -4,12 +4,14 @@
 import * as React from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Play, Sparkles, Loader, Trash2, Plus, Code, List } from 'lucide-react'
+import { Play, Sparkles, Loader, Trash2, Plus, Code, List, ChevronDown, Search } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { parse, print } from 'graphql';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from './ui/input'
 import { cn } from '@/lib/utils'
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command'
 
 interface QueryEditorProps {
   value: string;
@@ -78,6 +80,7 @@ export function QueryEditor({ value, onValueChange, onRunQuery, isLoading, varia
                 onJsonStringChange={onVariablesChange}
                 keyPlaceholder="variable"
                 valuePlaceholder="value"
+                type="variables"
               />
             </TabsContent>
             <TabsContent value="headers" className="mt-2">
@@ -86,6 +89,7 @@ export function QueryEditor({ value, onValueChange, onRunQuery, isLoading, varia
                 onJsonStringChange={onHeadersChange}
                 keyPlaceholder="Header"
                 valuePlaceholder="Value"
+                type="headers"
               />
             </TabsContent>
           </Tabs>
@@ -104,9 +108,24 @@ interface KeyValueEditorProps {
   onJsonStringChange: (jsonString: string) => void;
   keyPlaceholder: string;
   valuePlaceholder: string;
+  type: 'variables' | 'headers';
 }
 
-function KeyValueEditor({ jsonString, onJsonStringChange, keyPlaceholder, valuePlaceholder }: KeyValueEditorProps) {
+const COMMON_HEADERS = [
+  { name: 'Authorization', value: 'Bearer ' },
+  { name: 'Content-Type', value: 'application/json' },
+  { name: 'Accept', value: 'application/json' },
+  { name: 'Accept-Charset', value: 'utf-8' },
+  { name: 'Accept-Encoding', value: 'gzip, deflate, br' },
+  { name: 'Cache-Control', value: 'no-cache' },
+  { name: 'User-Agent', value: 'GraphQLVision/1.0' },
+  { name: 'X-Request-ID', value: '' },
+  { name: 'apollographql-client-name', value: '' },
+  { name: 'apollographql-client-version', value: '' },
+];
+
+
+function KeyValueEditor({ jsonString, onJsonStringChange, keyPlaceholder, valuePlaceholder, type }: KeyValueEditorProps) {
   const [viewMode, setViewMode] = React.useState<ViewMode>('kv');
   const [kvPairs, setKvPairs] = React.useState<KeyValue[]>([]);
   const { toast } = useToast();
@@ -115,7 +134,6 @@ function KeyValueEditor({ jsonString, onJsonStringChange, keyPlaceholder, valueP
     try {
       const parsed = jsonString ? JSON.parse(jsonString) : {};
       if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-        // If not a valid object, we can't represent as KV pairs, switch to JSON view
         setViewMode('json');
         return;
       }
@@ -138,14 +156,12 @@ function KeyValueEditor({ jsonString, onJsonStringChange, keyPlaceholder, valueP
       const obj = pairs.reduce((acc, { key, value }) => {
         if (key) {
           try {
-            // Attempt to parse value as JSON if it looks like an object/array
             if ((value.startsWith('{') && value.endsWith('}')) || (value.startsWith('[') && value.endsWith(']'))) {
               acc[key] = JSON.parse(value);
             } else {
               acc[key] = value;
             }
           } catch {
-            // If JSON.parse fails, treat as a plain string
             acc[key] = value;
           }
         }
@@ -153,7 +169,7 @@ function KeyValueEditor({ jsonString, onJsonStringChange, keyPlaceholder, valueP
       }, {} as Record<string, any>);
       onJsonStringChange(JSON.stringify(obj, null, 2));
     } catch (e) {
-      // This should not happen if logic is correct
+      // Should not happen
     }
   };
   
@@ -163,8 +179,8 @@ function KeyValueEditor({ jsonString, onJsonStringChange, keyPlaceholder, valueP
     updateJsonString(newPairs);
   };
   
-  const addPair = () => {
-    const newPairs = [...kvPairs, { id: `id-${Date.now()}`, key: '', value: '' }];
+  const addPair = (key = '', value = '') => {
+    const newPairs = [...kvPairs, { id: `id-${Date.now()}`, key, value }];
     setKvPairs(newPairs);
     updateJsonString(newPairs);
   };
@@ -183,7 +199,6 @@ function KeyValueEditor({ jsonString, onJsonStringChange, keyPlaceholder, valueP
     if (viewMode === 'kv') {
       setViewMode('json');
     } else {
-      // switching from json to kv
       try {
         const parsed = jsonString ? JSON.parse(jsonString) : {};
          if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
@@ -206,9 +221,24 @@ function KeyValueEditor({ jsonString, onJsonStringChange, keyPlaceholder, valueP
     }
   }
 
+  const handleSelectCommonHeader = (header: { name: string; value: string }) => {
+    // Check if the last pair is empty, if so, use it. Otherwise, add a new one.
+    const lastPair = kvPairs[kvPairs.length - 1];
+    if (lastPair && !lastPair.key && !lastPair.value) {
+      handleKvChange(lastPair.id, 'key', header.name);
+      handleKvChange(lastPair.id, 'value', header.value);
+      const newPairs = kvPairs.map(p => p.id === lastPair.id ? { ...p, key: header.name, value: header.value } : p);
+      setKvPairs(newPairs);
+      updateJsonString(newPairs);
+    } else {
+      addPair(header.name, header.value);
+    }
+  }
+
   return (
     <div className="space-y-2">
-      <div className="flex justify-end">
+      <div className="flex justify-end items-center gap-2">
+         {type === 'headers' && viewMode === 'kv' && <CommonHeadersPopover onSelect={handleSelectCommonHeader} />}
         <Button variant="ghost" size="sm" onClick={handleToggleView}>
           {viewMode === 'kv' ? <Code className="mr-2" /> : <List className="mr-2" />}
           {viewMode === 'kv' ? 'JSON' : 'Key-Value'}
@@ -236,7 +266,7 @@ function KeyValueEditor({ jsonString, onJsonStringChange, keyPlaceholder, valueP
               </Button>
             </div>
           ))}
-          <Button variant="outline" size="sm" onClick={addPair}>
+          <Button variant="outline" size="sm" onClick={() => addPair()}>
             <Plus className="mr-2"/> Add
           </Button>
         </div>
@@ -252,4 +282,40 @@ function KeyValueEditor({ jsonString, onJsonStringChange, keyPlaceholder, valueP
   );
 }
 
-    
+
+function CommonHeadersPopover({ onSelect }: { onSelect: (header: { name: string; value: string }) => void }) {
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="h-8">
+          Add Common
+          <ChevronDown className="ml-2 h-4 w-4" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[300px] p-0">
+        <Command>
+          <CommandInput placeholder="Search headers..." />
+          <CommandList>
+            <CommandEmpty>No headers found.</CommandEmpty>
+            <CommandGroup>
+              {COMMON_HEADERS.map((header) => (
+                <CommandItem
+                  key={header.name}
+                  onSelect={() => {
+                    onSelect(header);
+                    setOpen(false);
+                  }}
+                  className="cursor-pointer"
+                >
+                  {header.name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
