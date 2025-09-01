@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from 'react';
@@ -26,7 +27,7 @@ export function SchemaExplorer({ schema }: SchemaExplorerProps) {
     <div className="flex flex-col h-full bg-card">
       <Tabs defaultValue="schema" className="flex-1 flex flex-col min-h-0">
         <div className="p-2 border-b">
-          <TabsList className="grid w-full grid-cols-3 h-9">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="schema"><Search className="w-4 h-4 mr-1.5" /> Schema</TabsTrigger>
             <TabsTrigger value="collections"><FolderKanban className="w-4 h-4 mr-1.5" /> Collections</TabsTrigger>
             <TabsTrigger value="history"><History className="w-4 h-4 mr-1.5" /> History</TabsTrigger>
