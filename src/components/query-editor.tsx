@@ -292,6 +292,19 @@ function KeyValueEditor({ jsonString, onJsonStringChange, keyPlaceholder, valueP
 
 function CommonHeadersPopover({ onSelect }: { onSelect: (headerName: string) => void }) {
   const [open, setOpen] = React.useState(false);
+  const [search, setSearch] = React.useState('');
+
+  const filteredHeaders = React.useMemo(() => {
+    return COMMON_HEADERS.filter(header =>
+      header.name.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [search]);
+
+  const handleSelect = (headerName: string) => {
+    onSelect(headerName);
+    setOpen(false);
+    setSearch('');
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -302,27 +315,36 @@ function CommonHeadersPopover({ onSelect }: { onSelect: (headerName: string) => 
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[300px] p-0">
-        <Command>
-          <CommandInput placeholder="Search headers..." />
-          <CommandList>
-            <CommandEmpty>No headers found.</CommandEmpty>
-            <CommandGroup>
-              {COMMON_HEADERS.map((header) => (
-                <CommandItem
+        <div className="p-2 border-b">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search headers..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 h-8"
+            />
+          </div>
+        </div>
+        <div className="max-h-[200px] overflow-y-auto">
+          {filteredHeaders.length === 0 ? (
+            <div className="p-4 text-sm text-muted-foreground text-center">
+              No headers found.
+            </div>
+          ) : (
+            <div className="p-1">
+              {filteredHeaders.map((header) => (
+                <div
                   key={header.name}
-                  value={header.name}
-                  onSelect={(currentValue) => {
-                    onSelect(currentValue);
-                    setOpen(false);
-                  }}
-                  className="cursor-pointer"
+                  className="flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                  onClick={() => handleSelect(header.name)}
                 >
                   {header.name}
-                </CommandItem>
+                </div>
               ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
+            </div>
+          )}
+        </div>
       </PopoverContent>
     </Popover>
   );
