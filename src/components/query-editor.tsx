@@ -222,17 +222,21 @@ function KeyValueEditor({ jsonString, onJsonStringChange, keyPlaceholder, valueP
   }
 
   const handleSelectCommonHeader = (header: { name: string; value: string }) => {
-    // Check if the last pair is empty, if so, use it. Otherwise, add a new one.
     const lastPair = kvPairs[kvPairs.length - 1];
+    let newPairs;
+
     if (lastPair && !lastPair.key && !lastPair.value) {
-      handleKvChange(lastPair.id, 'key', header.name);
-      handleKvChange(lastPair.id, 'value', header.value);
-      const newPairs = kvPairs.map(p => p.id === lastPair.id ? { ...p, key: header.name, value: header.value } : p);
-      setKvPairs(newPairs);
-      updateJsonString(newPairs);
+      // If the last pair is empty, update it
+      newPairs = kvPairs.map(p => 
+        p.id === lastPair.id ? { ...p, key: header.name, value: header.value } : p
+      );
     } else {
-      addPair(header.name, header.value);
+      // Otherwise, add a new pair
+      newPairs = [...kvPairs, { id: `id-${Date.now()}`, key: header.name, value: header.value }];
     }
+    
+    setKvPairs(newPairs);
+    updateJsonString(newPairs);
   }
 
   return (
@@ -240,7 +244,7 @@ function KeyValueEditor({ jsonString, onJsonStringChange, keyPlaceholder, valueP
       <div className="flex justify-end items-center gap-2">
          {type === 'headers' && viewMode === 'kv' && <CommonHeadersPopover onSelect={handleSelectCommonHeader} />}
         <Button variant="ghost" size="sm" onClick={handleToggleView}>
-          {viewMode === 'kv' ? <Code className="mr-2" /> : <List className="mr-2" />}
+          {viewMode === 'kv' ? <Code className="mr-2 h-4 w-4" /> : <List className="mr-2 h-4 w-4" />}
           {viewMode === 'kv' ? 'JSON' : 'Key-Value'}
         </Button>
       </div>
@@ -267,7 +271,7 @@ function KeyValueEditor({ jsonString, onJsonStringChange, keyPlaceholder, valueP
             </div>
           ))}
           <Button variant="outline" size="sm" onClick={() => addPair()}>
-            <Plus className="mr-2"/> Add
+            <Plus className="mr-2 h-4 w-4"/> Add
           </Button>
         </div>
       ) : (
@@ -319,3 +323,5 @@ function CommonHeadersPopover({ onSelect }: { onSelect: (header: { name: string;
     </Popover>
   );
 }
+
+    
