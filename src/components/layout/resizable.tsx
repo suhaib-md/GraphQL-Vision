@@ -33,7 +33,7 @@ interface ResizablePanelProps extends React.HTMLAttributes<HTMLDivElement> {
 const ResizablePanel = React.forwardRef<
   HTMLDivElement,
   ResizablePanelProps
->(({ className, children, defaultSize, style, ...props }, ref) => (
+>(({ className, children, defaultSize, minSize, style, ...props }, ref) => (
   <div
     ref={ref}
     className={cn("relative flex flex-col", className)}
