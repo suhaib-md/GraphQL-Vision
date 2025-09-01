@@ -54,7 +54,7 @@ export function ResponseViewer({ response, rawSchema, query, isLoading }: Respon
         </div>
       )
     }
-    return <pre className="p-4 text-xs font-code"><code className="font-code">{response}</code></pre>;
+    return <pre className="p-4 text-xs font-code h-full"><code className="font-code">{response}</code></pre>;
   }
 
   return (
