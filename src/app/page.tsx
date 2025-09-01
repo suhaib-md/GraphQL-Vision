@@ -8,29 +8,112 @@ import { SchemaExplorer } from '@/components/schema-explorer';
 import { QueryEditor } from '@/components/query-editor';
 import { ResponseViewer } from '@/components/response-viewer';
 import { MOCK_SCHEMA, MOCK_QUERY, MOCK_RESPONSE } from '@/lib/constants';
+import { useToast } from '@/hooks/use-toast';
+import type { Environment } from '@/lib/types';
+
+const INITIAL_ENVIRONMENTS: Environment[] = [
+    { id: 'prod', name: 'Production', url: 'https://api.example.com/graphql', color: 'bg-green-500' },
+    { id: 'staging', name: 'Staging', url: 'https://staging.api.example.com/graphql', color: 'bg-yellow-500' },
+    { id: 'dev', name: 'Development', url: 'http://localhost:4000/graphql', color: 'bg-blue-500' },
+];
+
 
 export default function Home() {
   const [query, setQuery] = React.useState(MOCK_QUERY);
+  const [variables, setVariables] = React.useState('{}');
+  const [headers, setHeaders] = React.useState('{}');
   const [response, setResponse] = React.useState(JSON.stringify(MOCK_RESPONSE, null, 2));
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [environments, setEnvironments] = React.useState<Environment[]>(INITIAL_ENVIRONMENTS);
+  const [selectedEnvironmentId, setSelectedEnvironmentId] = React.useState<string>('prod');
   const schema = MOCK_SCHEMA;
+  const { toast } = useToast();
 
-  const handleRunQuery = () => {
-    // In a real app, you would execute the query against a GraphQL endpoint.
-    // For this mock, we'll just show the mock response.
-    console.log("Running query:", query);
-    setResponse(JSON.stringify(MOCK_RESPONSE, null, 2));
+  const handleRunQuery = async () => {
+    setIsLoading(true);
+    setResponse('');
+
+    const activeEnv = environments.find(env => env.id === selectedEnvironmentId);
+    if (!activeEnv) {
+      toast({
+        variant: 'destructive',
+        title: 'No Environment Selected',
+        description: 'Please select an environment to run the query against.',
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      let parsedVariables;
+      try {
+        parsedVariables = JSON.parse(variables || '{}');
+      } catch (e) {
+        throw new Error('Variables contain invalid JSON.');
+      }
+      
+      let parsedHeaders;
+      try {
+        parsedHeaders = JSON.parse(headers || '{}');
+      } catch(e) {
+        throw new Error('Headers contain invalid JSON.');
+      }
+
+      const mergedHeaders = {
+        'Content-Type': 'application/json',
+        ...parsedHeaders,
+      };
+
+      if (activeEnv.token) {
+        mergedHeaders['Authorization'] = `Bearer ${activeEnv.token}`;
+      }
+
+      const res = await fetch(activeEnv.url, {
+        method: 'POST',
+        headers: mergedHeaders,
+        body: JSON.stringify({ query, variables: parsedVariables }),
+      });
+
+      const result = await res.json();
+      setResponse(JSON.stringify(result, null, 2));
+
+    } catch (error: any) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+      setResponse(JSON.stringify({ error: errorMessage }, null, 2));
+      toast({
+        variant: 'destructive',
+        title: 'Query Failed',
+        description: errorMessage,
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground font-body">
-      <AppHeader />
+      <AppHeader
+        environments={environments}
+        setEnvironments={setEnvironments}
+        selectedEnvironment={selectedEnvironmentId}
+        setSelectedEnvironment={setSelectedEnvironmentId}
+      />
       <ResizablePanelGroup direction="horizontal" className="flex-1 border-t">
         <ResizablePanel defaultSize={20} minSize={15} className="min-w-[250px]">
           <SchemaExplorer schema={schema} />
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={45} minSize={30}>
-          <QueryEditor value={query} onValueChange={setQuery} onRunQuery={handleRunQuery} />
+          <QueryEditor 
+            value={query} 
+            onValueChange={setQuery} 
+            onRunQuery={handleRunQuery}
+            isLoading={isLoading}
+            variables={variables}
+            onVariablesChange={setVariables}
+            headers={headers}
+            onHeadersChange={setHeaders}
+          />
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={35} minSize={25}>
@@ -38,6 +121,7 @@ export default function Home() {
             response={response}
             rawSchema={JSON.stringify(schema, null, 2)}
             query={query}
+            isLoading={isLoading}
           />
         </ResizablePanel>
       </ResizablePanelGroup>

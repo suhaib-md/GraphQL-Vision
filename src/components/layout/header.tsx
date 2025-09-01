@@ -1,3 +1,4 @@
+
 import * as React from 'react';
 import { Logo } from '@/components/icons/logo';
 import { Button } from '@/components/ui/button';
@@ -13,33 +14,25 @@ import {
   DropdownMenuRadioItem,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ChevronsUpDown, Cloud, LifeBuoy, LogOut, Settings, User, PlusCircle, Trash2 } from 'lucide-react';
+import { ChevronsUpDown, Cloud, LifeBuoy, LogOut, Settings, User, PlusCircle, Trash2, CheckCircle, XCircle } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import type { Environment } from '@/lib/types';
+import { Badge } from '../ui/badge';
 
-interface Environment {
-  id: string;
-  name: string;
-  url: string;
-  token?: string;
-  color: string;
+
+interface AppHeaderProps {
+  environments: Environment[];
+  setEnvironments: React.Dispatch<React.SetStateAction<Environment[]>>;
+  selectedEnvironment: string;
+  setSelectedEnvironment: React.Dispatch<React.SetStateAction<string>>;
 }
 
-const INITIAL_ENVIRONMENTS: Environment[] = [
-    { id: 'prod', name: 'Production', url: 'https://api.example.com/graphql', color: 'bg-green-500' },
-    { id: 'staging', name: 'Staging', url: 'https://staging.api.example.com/graphql', color: 'bg-yellow-500' },
-    { id: 'dev', name: 'Development', url: 'http://localhost:4000/graphql', color: 'bg-blue-500' },
-];
-
-
-export function AppHeader() {
-  const [environments, setEnvironments] = React.useState<Environment[]>(INITIAL_ENVIRONMENTS);
-  const [selectedEnvironment, setSelectedEnvironment] = React.useState<string>('prod');
-
+export function AppHeader({ environments, setEnvironments, selectedEnvironment, setSelectedEnvironment }: AppHeaderProps) {
   return (
     <header className="flex h-14 shrink-0 items-center gap-4 border-b bg-card px-4 lg:h-16">
       <div className="flex items-center gap-2">
@@ -76,8 +69,14 @@ function EnvironmentSwitcher({ environments, setEnvironments, selectedEnvironmen
       <DropdownMenuTrigger asChild>
         <Button variant="outline" className="w-[200px] justify-between">
           <div className="flex items-center gap-2">
-            <div className={cn("h-2 w-2 rounded-full", activeEnv.color)} />
-            <span>{activeEnv.name}</span>
+             {activeEnv ? (
+              <>
+                <div className={cn("h-2 w-2 rounded-full", activeEnv.color)} />
+                <span>{activeEnv.name}</span>
+              </>
+            ) : (
+              <span>Select Environment</span>
+            )}
           </div>
           <ChevronsUpDown className="h-4 w-4 opacity-50" />
         </Button>
@@ -221,6 +220,7 @@ function ManageEnvironmentsSheet({ children, environments, setEnvironments }: { 
     const [name, setName] = React.useState('');
     const [url, setUrl] = React.useState('');
     const [token, setToken] = React.useState('');
+    const [checkingId, setCheckingId] = React.useState<string | null>(null);
 
     const handleAddEnvironment = () => {
         if (!name || !url) {
@@ -251,6 +251,43 @@ function ManageEnvironmentsSheet({ children, environments, setEnvironments }: { 
         setEnvironments(prev => prev.filter(env => env.id !== id));
         toast({ title: 'Environment Removed' });
     };
+    
+    const handleCheckConnection = async (env: Environment) => {
+      setCheckingId(env.id);
+      try {
+        const headers: HeadersInit = { 'Content-Type': 'application/json' };
+        if (env.token) {
+          headers['Authorization'] = `Bearer ${env.token}`;
+        }
+        
+        // A simple introspection query to check the connection
+        const response = await fetch(env.url, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ query: '{ __schema { types { name } } }' }),
+        });
+
+        if (response.ok) {
+          toast({
+            title: 'Connection Successful',
+            description: `Successfully connected to ${env.name}.`,
+            action: <CheckCircle className="text-green-500" />,
+          });
+        } else {
+          throw new Error(`Status: ${response.status}`);
+        }
+      } catch (error: any) {
+        toast({
+          variant: 'destructive',
+          title: 'Connection Failed',
+          description: `Could not connect to ${env.name}. ${error.message}`,
+          action: <XCircle className="text-white" />,
+        });
+      } finally {
+        setCheckingId(null);
+      }
+    };
+
 
     return (
         <Sheet>
@@ -272,9 +309,14 @@ function ManageEnvironmentsSheet({ children, environments, setEnvironments }: { 
                                             <p className="text-xs text-muted-foreground">{env.url}</p>
                                         </div>
                                     </div>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteEnvironment(env.id)}>
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
+                                    <div className="flex items-center gap-1">
+                                      <Button variant="outline" size="sm" onClick={() => handleCheckConnection(env)} disabled={checkingId === env.id}>
+                                        {checkingId === env.id ? 'Checking...' : 'Test Connection'}
+                                      </Button>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteEnvironment(env.id)}>
+                                          <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
                                 </div>
                             ))}
                         </div>

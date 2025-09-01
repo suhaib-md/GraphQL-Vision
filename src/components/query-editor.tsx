@@ -1,18 +1,24 @@
+
 "use client"
 
 import * as React from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Play, Sparkles } from 'lucide-react'
+import { Play, Sparkles, Loader } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 interface QueryEditorProps {
   value: string;
   onValueChange: (value: string) => void;
   onRunQuery: () => void;
+  isLoading: boolean;
+  variables: string;
+  onVariablesChange: (value: string) => void;
+  headers: string;
+  onHeadersChange: (value: string) => void;
 }
 
-export function QueryEditor({ value, onValueChange, onRunQuery }: QueryEditorProps) {
+export function QueryEditor({ value, onValueChange, onRunQuery, isLoading, variables, onVariablesChange, headers, onHeadersChange }: QueryEditorProps) {
   return (
     <div className="flex flex-col h-full bg-card">
       <div className="p-2 border-b flex items-center justify-between gap-2 h-14 shrink-0">
@@ -22,9 +28,13 @@ export function QueryEditor({ value, onValueChange, onRunQuery }: QueryEditorPro
             <Sparkles className="h-4 w-4 mr-2" />
             Prettify
           </Button>
-          <Button size="sm" onClick={onRunQuery}>
-            <Play className="h-4 w-4 mr-2" />
-            Run
+          <Button size="sm" onClick={onRunQuery} disabled={isLoading}>
+            {isLoading ? (
+              <Loader className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Play className="h-4 w-4 mr-2" />
+            )}
+            {isLoading ? 'Running...' : 'Run'}
           </Button>
         </div>
       </div>
@@ -45,12 +55,16 @@ export function QueryEditor({ value, onValueChange, onRunQuery }: QueryEditorPro
               <Textarea
                 placeholder='{ "variable": "value" }'
                 className="font-code text-xs h-24 resize-none bg-background"
+                value={variables}
+                onChange={(e) => onVariablesChange(e.target.value)}
               />
             </TabsContent>
             <TabsContent value="headers" className="mt-2">
               <Textarea
                 placeholder='{ "Authorization": "Bearer YOUR_TOKEN" }'
                 className="font-code text-xs h-24 resize-none bg-background"
+                value={headers}
+                onChange={(e) => onHeadersChange(e.target.value)}
               />
             </TabsContent>
           </Tabs>

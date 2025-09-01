@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from 'react'
@@ -17,18 +18,44 @@ interface ResponseViewerProps {
   response: string;
   rawSchema: string;
   query: string;
+  isLoading: boolean;
 }
 
-export function ResponseViewer({ response, rawSchema, query }: ResponseViewerProps) {
+export function ResponseViewer({ response, rawSchema, query, isLoading }: ResponseViewerProps) {
   const parsedResponse = React.useMemo(() => {
     try {
       return JSON.parse(response)
     } catch {
-      return { error: "Invalid JSON response" }
+      // If response is not a valid JSON, it might be an error string or empty.
+      if (response) {
+         return { error: "Invalid JSON response" }
+      }
+      return null;
     }
   }, [response]);
   
   const users = parsedResponse?.data?.users;
+
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="p-4 space-y-4">
+          <Skeleton className="h-8 w-1/2" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-3/4" />
+        </div>
+      );
+    }
+    if (!response) {
+      return (
+        <div className="text-center text-muted-foreground text-sm flex-1 flex items-center justify-center h-full">
+            <p>Click "Run" to see the response here.</p>
+        </div>
+      )
+    }
+    return <pre className="p-4 text-xs font-code"><code className="font-code">{response}</code></pre>;
+  }
 
   return (
     <div className="flex flex-col h-full bg-card">
@@ -51,7 +78,7 @@ export function ResponseViewer({ response, rawSchema, query }: ResponseViewerPro
         </div>
         <TabsContent value="response" className="flex-1 m-0">
           <ScrollArea className="h-full">
-            <pre className="p-4 text-xs font-code"><code className="font-code">{response}</code></pre>
+            {renderContent()}
           </ScrollArea>
         </TabsContent>
         <TabsContent value="table" className="flex-1 m-0">
@@ -91,7 +118,7 @@ export function ResponseViewer({ response, rawSchema, query }: ResponseViewerPro
   )
 }
 
-function AiSuggestions({ response, rawSchema, query }: ResponseViewerProps) {
+function AiSuggestions({ response, rawSchema, query }: Omit<ResponseViewerProps, 'isLoading'>) {
   const [description, setDescription] = React.useState('');
   const [suggestions, setSuggestions] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
@@ -132,8 +159,9 @@ function AiSuggestions({ response, rawSchema, query }: ResponseViewerProps) {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className="h-24"
+                disabled={!response}
               />
-              <Button onClick={handleGenerateSuggestions} disabled={isLoading}>
+              <Button onClick={handleGenerateSuggestions} disabled={isLoading || !response}>
                 {isLoading ? "Generating..." : "Suggest Validations"}
               </Button>
             </div>
